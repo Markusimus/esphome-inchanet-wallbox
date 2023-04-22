@@ -14,7 +14,10 @@ uart:
 #      - lambda: UARTDebug::log_hex(direction, bytes, ' ');
 
 external_components:
-  source: github://koleo9am/esphome-inchanet-wallbox@main
+  source:
+    type: git
+    url: https://github.com/koleo9am/esphome-inchanet-wallbox/
+    ref: main
 
 inchanet_wallbox:
   id: inchanet_wallbox_id
