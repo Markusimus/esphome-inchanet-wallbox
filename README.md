@@ -6,6 +6,6 @@ Inchanet Wallbox UART Integration for ESPHome
 I've included an example also.
 
 ## inchanet_wallbox
-For connection of esphome to a Inchanet Wallbox using the UART interface (contact the Inchanet for possible upgradde).
+There is used a UART interface for connection to the Inchanet Wallbox (contact the Inchanet for possible upgrade).
 
 Currently, this component is designed to read all values from the wallbox and set 3-phase/1-phase charging (via a switch), max charging current (via a select) and default charging current (via a select).
