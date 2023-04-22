@@ -1,0 +1,90 @@
+uart:
+  id: uart_bus
+  tx_pin: GPIO15
+  rx_pin: GPIO13
+  baud_rate: 9600
+  parity: NONE
+  stop_bits: 1
+  data_bits: 8
+#  debug:
+#    direction: BOTH
+#    after:
+#      bytes: 4
+#    sequence:
+#      - lambda: UARTDebug::log_hex(direction, bytes, ' ');
+
+external_components:
+  source: github://koleo9am/esphome-inchanet-wallbox@main
+
+inchanet_wallbox:
+  id: inchanet_wallbox_id
+  uart_id: uart_bus
+  update_interval: 10s
+
+  # sensors names
+  voltage_l1:
+    name: "Inchanet Wallbox - Voltage L1"
+  voltage_l2:
+    name: "Inchanet Wallbox - Voltage L2"
+  voltage_l3:
+    name: "Inchanet Wallbox - Voltage L3"
+  current_l1:
+    name: "Inchanet Wallbox - Current L1"
+  current_l2:
+    name: "Inchanet Wallbox - Current L2"
+  current_l3:
+    name: "Inchanet Wallbox - Current L3"
+  power_factor_l1:
+    name: "Inchanet Wallbox - Power Factor L1"
+  power_factor_l2:
+    name: "Inchanet Wallbox - Power Factor L2"
+  power_factor_l3:
+    name: "Inchanet Wallbox - Power Factor L3"
+  frequency_l1:
+    name: "Inchanet Wallbox - Frequency L1"
+  frequency_l2:
+    name: "Inchanet Wallbox - Frequency L2"
+  frequency_l3:
+    name: "Inchanet Wallbox - Frequency L3"
+  external_current_l1:
+    name: "Inchanet Wallbox - External Current L1"
+  external_current_l2:
+    name: "Inchanet Wallbox - External Current L2"
+  external_current_l3:
+    name: "Inchanet Wallbox - External Current L3"
+  wh_in_this_session:
+    name: "Inchanet Wallbox - Wh in This Session"
+  wh_all_time:
+    name: "Inchanet Wallbox - Wh All Time"
+  evse_temperature:
+    name: "Inchanet Wallbox - EVSE temperature"
+  state:
+    name: "Inchanet Wallbox - State"
+  state_of_charging:
+    name: "Inchanet Wallbox - State of Charging"
+  state_of_electric_vehicle:
+    name: "Inchanet Wallbox - State of EV"
+  state_of_sockets_lock:
+    name: "Inchanet Wallbox - State of Sockets Lock"
+  warnings:
+    name: "Inchanet Wallbox - Warnings"
+  serious_errors:
+    name: "Inchanet Wallbox - Errors"
+  measured_pp_resistance:
+    name: "Inchanet Wallbox - Measured PP Resistance"
+
+switch:
+  - platform: inchanet_wallbox
+    inchanet_wallbox_id: inchanet_wallbox_id
+    name: "Inchanet Wallbox - 3 Phase Charging Enabled"
+
+select:
+  - platform: inchanet_wallbox
+    inchanet_wallbox_id: inchanet_wallbox_id
+    type: max_charge_current
+    name: "Inchanet Wallbox - Max Charging Current"
+
+  - platform: inchanet_wallbox
+    inchanet_wallbox_id: inchanet_wallbox_id
+    type: default_charge_current
+    name: "Inchanet Wallbox - Default Charging Current"
