@@ -4,7 +4,6 @@
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/log.h"
 #include "inchanet_wallbox.h"
-#include <string>
 
 namespace esphome {
 namespace inchanet_wallbox {
@@ -80,7 +79,7 @@ void InchanetWallboxComponent::update() {
         // CRC OK
         char tmp_hex[3];
         float tmp_float = 0;
-        string tmp_state;
+        char tmp_state[100];
 
         // state of electric vehicle - dekodujeme hodnoty 
         switch(buffer[9]) {
@@ -100,9 +99,7 @@ void InchanetWallboxComponent::update() {
             tmp_state = "0x04 - error state";
             break;
           default:
-            char buff[20];
-            snprintf(buff, sizeof(buff), "%02X - Unknown", buffer[9]);
-            tmp_state = buff;
+            snprintf(tmp_state, sizeof(tmp_state), "%02X - Unknown", buffer[9]);
             break;
         }
         this->state_of_electric_vehicle_sensor_->publish_state(tmp_state);
