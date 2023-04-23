@@ -5,7 +5,6 @@
 #include "esphome/core/log.h"
 #include "inchanet_wallbox.h"
 #include <string>
-#include <format>
 
 namespace esphome {
 namespace inchanet_wallbox {
@@ -101,7 +100,9 @@ void InchanetWallboxComponent::update() {
             tmp_state = "0x04 - error state";
             break;
           default:
-            tmp_state = std::format("%02X - Unknown", buffer[9]);
+            char buff[20];
+            snprintf(buff, sizeof(buff), "%02X - Unknown", buffer[9]);
+            tmp_state = buff;
             break;
         }
         this->state_of_electric_vehicle_sensor_->publish_state(tmp_state);
