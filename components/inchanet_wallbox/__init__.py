@@ -25,6 +25,7 @@ CHARGING_CURRENT_OPTIONS = {
 }
 
 CONF_INCHANET_WALLBOX_ID = "inchanet_wallbox_id"
+CONF_SERIAL_NUMBER = "serial_number"
 CONF_VOLTAGE_L1 = "voltage_l1"
 CONF_VOLTAGE_L2 = "voltage_l2"
 CONF_VOLTAGE_L3 = "voltage_l3"
@@ -55,6 +56,8 @@ CONF_ENABLE_3_PHASE = "enable_3_phase"
 
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(InchanetWallboxComponent),
+
+    cv.Required(CONF_SERIAL_NUMBER): cv.positive_int,
 
     cv.Optional(CONF_VOLTAGE_L1):
       sensor.sensor_schema(device_class=DEVICE_CLASS_VOLTAGE,unit_of_measurement=UNIT_VOLT,accuracy_decimals=0,state_class=STATE_CLASS_MEASUREMENT).extend(),
@@ -126,6 +129,8 @@ def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     yield cg.register_component(var, config)
     yield uart.register_uart_device(var, config)
+
+    cg.add(var.set_evse_id(config[CONF_SERIAL_NUMBER]))
 
     if CONF_VOLTAGE_L1 in config:
       conf = config[CONF_VOLTAGE_L1]

@@ -13,8 +13,6 @@ static const char *TAG = "inchanet_wallbox";
 static const uint8_t USART_BUFFER_IN_SIZE_LONG = 64;
 static const uint8_t SMALL_PACKET_OUT_SIZE = 16;
 
-static const uint32_t EVSE_ID = 22292;
-
 void InchanetWallboxComponent::setup() {
   // nothing to do here
 }
@@ -49,7 +47,7 @@ void InchanetWallboxComponent::update() {
     default_Amps = static_cast<uint8_t>(this->default_charging_current_) | 0x80;
   }
 
-  create_packet(USART_buffer_out, EVSE_ID, charging_type, max_Amps, third_rele, default_Amps);
+  create_packet(USART_buffer_out, this->evse_id_, charging_type, max_Amps, third_rele, default_Amps);
 
   write_array(USART_buffer_out, SMALL_PACKET_OUT_SIZE);
 
@@ -81,8 +79,6 @@ void InchanetWallboxComponent::update() {
       if(received_crc32 == computed_crc32){
         // CRC OK
         char tmp_hex[3];
-        float tmp_float = 0;
-        char tmp_state[100];
 
         // state of electric vehicle
         this->state_of_electric_vehicle_sensor_->publish_state(

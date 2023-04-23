@@ -36,6 +36,7 @@ class InchanetWallboxComponent : public uart::UARTDevice, public PollingComponen
     void update() override;
     void dump_config() override;
 
+    void set_evse_id(uint32_t s) { evse_id_ = s; }
     void set_voltage_l1_sensor(sensor::Sensor *s) { voltage_l1_sensor_ = s; }
     void set_voltage_l2_sensor(sensor::Sensor *s) { voltage_l2_sensor_ = s; }
     void set_voltage_l3_sensor(sensor::Sensor *s) { voltage_l3_sensor_ = s; }
@@ -99,6 +100,8 @@ class InchanetWallboxComponent : public uart::UARTDevice, public PollingComponen
     text_sensor::TextSensor *measured_pp_resistance_sensor_;
 
     switch_::Switch *enable_3_phase_switch_;
+
+    uint32_t evse_id_ = 0;
 
     bool enabled_3_phase_ = true;
     ChargingCurrentOption max_charging_current_ = CHARGING_CURRENT_16A;
