@@ -81,28 +81,10 @@ void InchanetWallboxComponent::update() {
         float tmp_float = 0;
         char tmp_state[100];
 
-        // state of electric vehicle - dekodujeme hodnoty 
-        switch(buffer[9]) {
-          case 0:
-            sprintf(tmp_state, "0x00 - EV not connected");
-            break;
-          case 1:
-            sprintf(tmp_state, "0x01 - EV connected");
-            break;
-          case 2:
-            sprintf(tmp_state, "0x02 - EV wants to charge");
-            break;
-          case 3:
-            sprintf(tmp_state, "0x03 - EV needs to ventilate");
-            break;
-          case 4:
-            sprintf(tmp_state, "0x04 - error state");
-            break;
-          default:
-            sprintf(tmp_state, "%02X - Unknown", buffer[9]);
-            break;
-        }
-        this->state_of_electric_vehicle_sensor_->publish_state(tmp_state);
+        // state of electric vehicle
+        this->state_of_electric_vehicle_sensor_->publish_state(
+          this->decode_state_of_ev (buffer[9]));
+        
         // state of charging - 0x00 - not charging, 0x01 - charging 1-phase, 0x02 - charging 3-phase
         sprintf(&tmp_hex[0], "%02X", buffer[9]);
         this->state_of_charging_sensor_->publish_state(tmp_hex);
@@ -215,6 +197,17 @@ void InchanetWallboxComponent::create_packet(uint8_t *packet_array, uint32_t ID,
   packet_array[SMALL_PACKET_OUT_SIZE -3] = uint8_t(crc >> 8);
   packet_array[SMALL_PACKET_OUT_SIZE -2] = uint8_t(crc >> 16);
   packet_array[SMALL_PACKET_OUT_SIZE -1] = uint8_t(crc >> 24);
+}
+
+std::string InchanetWallboxComponent::decode_state_of_ev (uint8_t state) {
+  switch(state) {
+    case 0: return "00 - EV not connected";
+    case 1: return "01 - EV connected";
+    case 2: return "02 - EV wants to charge";
+    case 3: return "03 - EV needs to ventilate";
+    case 4: return "04 - Error state";
+    default: return std::format("%02X - Unknown", buffer[9]);
+  }
 }
 
 } // inchanet_wallbox

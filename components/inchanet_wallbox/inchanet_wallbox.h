@@ -106,7 +106,7 @@ class InchanetWallboxComponent : public uart::UARTDevice, public PollingComponen
 
     unsigned int Calc_CRC32_sw(unsigned char* data, unsigned int length);
     void create_packet(uint8_t *packet_array, uint32_t ID, uint8_t charging_type, uint8_t max_Amps, uint8_t third_rele, uint8_t default_Amps);
-
+    std::string decode_state_of_ev (uint8_t state);
 };
 
 } // inchanet_wallbox
