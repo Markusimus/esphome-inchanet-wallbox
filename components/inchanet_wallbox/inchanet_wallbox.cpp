@@ -89,10 +89,19 @@ void InchanetWallboxComponent::update() {
           this->decode_state_of_charging(buffer[9])
         );
         // warnings - HEX
-        sprintf(&tmp_hex[0], "%02X", buffer[10]);
-        this->warnings_sensor_->publish_state(tmp_hex);
+        this->warnings_sensor_->publish_state(
+          this->decode_warnings(buffer[10]));
 
         // serious errors - HEX
+        // 0x00 - no errors
+        // 0x01 - relay stuck closed
+        // 0x02 - relay could not close
+        // 0x04 - error on RCD
+        // 0x08 - error on PE/N wires
+        // 0x10 - overvoltage
+        // 0x20 - overcurrent
+        // 0x40 - temperature too high (80°+)
+        // 0x80 - unsupported charging mode (i.e. ventilation needed or error on PWM voltage or input phase shorted)
         sprintf(&tmp_hex[0], "%02X", buffer[11]);
         this->serious_errors_sensor_->publish_state(tmp_hex);
 
@@ -265,6 +274,32 @@ std::string InchanetWallboxComponent::decode_state_of_PP(uint8_t state) {
       sprintf(buff, "%02X - unknown value", state);
       return buff;
   }
+}
+
+
+std::string InchanetWallboxComponent::decode_warnings(uint8_t state) {
+  // zakodujeme stav
+  char buff[3];
+  sprintf(buff, "%02X", state);
+  std:string result = buff;
+  // doplnime textove vysvetlivky
+  if (0x00 != (state & 0x01))
+    result = result + ", 0x01 - relay B (phase 2 and/or 3) could not close";
+  if (0x00 != (state & 0x02))
+    result = result + ", 0x02 - low voltage or missing phase (doesn't work in US/JP device)";
+  if (0x00 != (state & 0x04))
+    result = result + ", 0x04 - charging paused by DLM (including 0-5A from master)";
+  if (0x00 != (state & 0x08))
+    result = result + ", 0x08 - charging slows down due to higher temperature (70-80°C)";
+  if (0x00 != (state & 0x10))
+    result = result + ", 0x10 - error in communication with external current measurement";
+  if (0x00 != (state & 0x20))
+    result = result + ", 0x20 - inicialization underway";
+  if (0x00 != (state & 0x40))
+    result = result + ", 0x40 - problem on socket's pin lock";
+  if (0x00 != (state & 0x80))
+    result = result + ", 0x80 - receiving data from another communication channel";
+  return result;
 }
 
 } // inchanet_wallbox

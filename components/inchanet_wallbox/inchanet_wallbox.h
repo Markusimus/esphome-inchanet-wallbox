@@ -113,6 +113,7 @@ class InchanetWallboxComponent : public uart::UARTDevice, public PollingComponen
     std::string decode_state_of_charging(uint8_t state);
     std::string decode_state_of_lock(uint8_t state);
     std::string decode_state_of_PP(uint8_t state);
+    std::string decode_warnings(uint8_t state);
 };
 
 } // inchanet_wallbox
