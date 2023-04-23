@@ -277,31 +277,44 @@ std::string InchanetWallboxComponent::decode_state_of_PP(uint8_t state) {
   }
 }
 
-
 std::string InchanetWallboxComponent::decode_warnings(uint8_t state) {
   // zakodujeme stav
-  char buff[3];
-  sprintf(buff, "%02X", state);
-  std:string result;
-  
-   = buff;
+  char buff[1000];
+  sprintf(buff, "%02X - ", state);
+  size_t pos = strlen (buff);
   // doplnime textove vysvetlivky
-  if (0x00 != (state & 0x01))
-    result = result + ", 0x01 - relay B (phase 2 and/or 3) could not close";
-  if (0x00 != (state & 0x02))
-    result = result + ", 0x02 - low voltage or missing phase (doesn't work in US/JP device)";
-  if (0x00 != (state & 0x04))
-    result = result + ", 0x04 - charging paused by DLM (including 0-5A from master)";
-  if (0x00 != (state & 0x08))
-    result = result + ", 0x08 - charging slows down due to higher temperature (70-80°C)";
-  if (0x00 != (state & 0x10))
-    result = result + ", 0x10 - error in communication with external current measurement";
-  if (0x00 != (state & 0x20))
-    result = result + ", 0x20 - inicialization underway";
-  if (0x00 != (state & 0x40))
-    result = result + ", 0x40 - problem on socket's pin lock";
-  if (0x00 != (state & 0x80))
-    result = result + ", 0x80 - receiving data from another communication channel";
+  if (0x00 != (state & 0x01)) {
+    sprintf(&buff[pos], ", 0x01 - relay B (phase 2 and/or 3) could not close");
+    pos = strlen (buff);
+  }
+  if (0x00 != (state & 0x02)) {
+    sprintf(&buff[pos], ", 0x02 - low voltage or missing phase (doesn't work in US/JP device)");
+    pos = strlen (buff);
+  }
+  if (0x00 != (state & 0x04)) {
+    sprintf(&buff[pos], ", 0x04 - charging paused by DLM (including 0-5A from master)");
+    pos = strlen (buff);
+  }
+  if (0x00 != (state & 0x08)) {
+    sprintf(&buff[pos], ", 0x08 - charging slows down due to higher temperature (70-80°C)");
+    pos = strlen (buff);
+  }
+  if (0x00 != (state & 0x10)) {
+    sprintf(&buff[pos], ", 0x10 - error in communication with external current measurement");
+    pos = strlen (buff);
+  }
+  if (0x00 != (state & 0x20)) {
+    sprintf(&buff[pos], ", 0x20 - inicialization underway");
+    pos = strlen (buff);
+  }
+  if (0x00 != (state & 0x40)) {
+    sprintf(&buff[pos], ", 0x40 - problem on socket's pin lock");
+    pos = strlen (buff);
+  }
+  if (0x00 != (state & 0x80)) {
+    sprintf(&buff[pos], ", 0x80 - receiving data from another communication channel");
+    pos = strlen (buff);
+  }
   return result;
 }
 
