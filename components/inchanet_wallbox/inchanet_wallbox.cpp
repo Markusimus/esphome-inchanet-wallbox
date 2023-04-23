@@ -84,22 +84,22 @@ void InchanetWallboxComponent::update() {
         // state of electric vehicle - dekodujeme hodnoty 
         switch(buffer[9]) {
           case 0:
-            tmp_state = "0x00 - EV not connected";
+            sprintf(tmp_state, "0x00 - EV not connected");
             break;
           case 1:
-            tmp_state = "0x01 - EV connected";
+            sprintf(tmp_state, "0x01 - EV connected");
             break;
           case 2:
-            tmp_state = "0x02 - EV wants to charge";
+            sprintf(tmp_state, "0x02 - EV wants to charge");
             break;
           case 3:
-            tmp_state = "0x03 - EV needs to ventilate";
+            sprintf(tmp_state, "0x03 - EV needs to ventilate");
             break;
           case 4:
-            tmp_state = "0x04 - error state";
+            sprintf(tmp_state, "0x04 - error state");
             break;
           default:
-            snprintf(tmp_state, sizeof(tmp_state), "%02X - Unknown", buffer[9]);
+            sprintf(tmp_state, "%02X - Unknown", buffer[9]);
             break;
         }
         this->state_of_electric_vehicle_sensor_->publish_state(tmp_state);
