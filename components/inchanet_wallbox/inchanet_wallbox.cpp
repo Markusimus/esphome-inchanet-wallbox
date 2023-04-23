@@ -206,7 +206,10 @@ std::string InchanetWallboxComponent::decode_state_of_ev (uint8_t state) {
     case 2: return "02 - EV wants to charge";
     case 3: return "03 - EV needs to ventilate";
     case 4: return "04 - Error state";
-    default: return fmt::format("%02X - Unknown", state);
+    default: 
+      char buff[20];
+      sprintf(buff, "%02X - Unknown", state);
+      return buff;
   }
 }
 
