@@ -83,45 +83,57 @@ void InchanetWallboxComponent::update() {
 
         // state of electric vehicle
         this->state_of_electric_vehicle_sensor_->publish_state(
-          this->decode_state_of_ev (buffer[9]));
+          this->decode_state_of_ev (buffer[8]));
         
-        // state of charging - 0x00 - not charging, 0x01 - charging 1-phase, 0x02 - charging 3-phase
-        sprintf(&tmp_hex[0], "%02X", buffer[9]);
-        this->state_of_charging_sensor_->publish_state(tmp_hex);
+        // state of charging
+        this->state_of_charging_sensor_->publish_state(
+          this->decode_state_of_charging(buffer[9])
+        );
         // warnings - HEX
         sprintf(&tmp_hex[0], "%02X", buffer[10]);
         this->warnings_sensor_->publish_state(tmp_hex);
+
         // serious errors - HEX
         sprintf(&tmp_hex[0], "%02X", buffer[11]);
         this->serious_errors_sensor_->publish_state(tmp_hex);
+
         // measured voltage
         this->voltage_l1_sensor_->publish_state(0.25 * ((buffer[13] << 8) | buffer[12]));
         this->voltage_l2_sensor_->publish_state(0.25 * ((buffer[15] << 8) | buffer[14]));
         this->voltage_l3_sensor_->publish_state(0.25 * ((buffer[17] << 8) | buffer[16]));
+
         // measured current
         this->current_l1_sensor_->publish_state(0.1 * (int16_t)((buffer[19] << 8) | buffer[18]));
         this->current_l2_sensor_->publish_state(0.1 * (int16_t)((buffer[21] << 8) | buffer[20]));
         this->current_l3_sensor_->publish_state(0.1 * (int16_t)((buffer[23] << 8) | buffer[22]));
+
         // Wh in this session
         this->wh_in_this_session_sensor_->publish_state ((buffer[27] << 8) | (buffer[26] << 16) | (buffer[25] << 8) | buffer[24]);
+
         // All time Wh charged
         this->wh_all_time_sensor_->publish_state ((buffer[31] << 8) | (buffer[30] << 16) | (buffer[29] << 8) | buffer[28]);
+
         // socket's lock state 
-        sprintf(&tmp_hex[0], "%02X", buffer[32]);
-        this->state_of_sockets_lock_sensor_->publish_state(tmp_hex);
+        this->state_of_sockets_lock_sensor_->publish_state(
+          this->decode_state_of_lock(buffer[32]));
+
         // EVSE temperature
         this->evse_temperature_sensor_->publish_state((int8_t)buffer[33]);
+
         // measured PP resistance
-        sprintf(&tmp_hex[0], "%02X", buffer[36]);
-        this->measured_pp_resistance_sensor_->publish_state(tmp_hex);
+        this->measured_pp_resistance_sensor_->publish_state(
+          this->decode_state_of_PP(buffer[36]));
+
         // power factor L1 L2 L3
         this->power_factor_l1_sensor_->publish_state(0.01 * (int8_t)buffer[37]);
         this->power_factor_l2_sensor_->publish_state(0.01 * (int8_t)buffer[38]);
         this->power_factor_l3_sensor_->publish_state(0.01 * (int8_t)buffer[39]);
+
         // frequency L1 L2 L3
         this->frequency_l1_sensor_->publish_state(0.1 * (int16_t)((buffer[41] << 8) | buffer[40]));
         this->frequency_l2_sensor_->publish_state(0.1 * (int16_t)((buffer[43] << 8) | buffer[42]));
         this->frequency_l3_sensor_->publish_state(0.1 * (int16_t)((buffer[45] << 8) | buffer[44]));
+
         // external current L1 L2 L3
         this->external_current_l1_sensor_->publish_state(0.1 * (int16_t)((buffer[52] << 8) | buffer[51]));
         this->external_current_l2_sensor_->publish_state(0.1 * (int16_t)((buffer[54] << 8) | buffer[53]));
@@ -199,16 +211,59 @@ void InchanetWallboxComponent::create_packet(uint8_t *packet_array, uint32_t ID,
   packet_array[SMALL_PACKET_OUT_SIZE -1] = uint8_t(crc >> 24);
 }
 
-std::string InchanetWallboxComponent::decode_state_of_ev (uint8_t state) {
+std::string InchanetWallboxComponent::decode_state_of_ev(uint8_t state) {
   switch(state) {
     case 0: return "00 - EV not connected";
     case 1: return "01 - EV connected";
     case 2: return "02 - EV wants to charge";
     case 3: return "03 - EV needs to ventilate";
-    case 4: return "04 - Error state";
+    case 4: return "04 - error state";
     default: 
-      char buff[20];
-      sprintf(buff, "%02X - Unknown", state);
+      char buff[30];
+      sprintf(buff, "%02X - unknown state", state);
+      return buff;
+  }
+}
+
+std::string InchanetWallboxComponent::decode_state_of_charging(uint8_t state) {
+  switch(state) {
+    case 0: return "00 - not charging";
+    case 1: return "01 - charging 1-phase";
+    case 2: return "02 - charging 3-phase";
+    default: 
+      char buff[30];
+      sprintf(buff, "%02X - unknown state", state);
+      return buff;
+  }
+}
+
+std::string InchanetWallboxComponent::decode_state_of_lock(uint8_t state) {
+  switch(state) {
+    case 0: return "00 - unknown lock state";
+    case 1: return "01 - trying to lock";
+    case 2: return "02 - trying to unlock";
+    case 3: return "03 - locked";
+    case 4: return "04 - unlocked";
+    case 5: return "05 - error";
+    default: 
+      char buff[30];
+      sprintf(buff, "%02X - unknown state", state);
+      return buff;
+  }
+}
+
+std::string InchanetWallboxComponent::decode_state_of_PP(uint8_t state) {
+  switch(state) {
+    case 0: return "00 - <220 ohm - 64A or EVSE set to cable type";
+    case 1: return "01 - 220 ohm - 32A";
+    case 2: return "02 - 470 ohm - 25A";
+    case 3: return "03 - 680 ohm - 20A";
+    case 4: return "04 - 1000 ohm - 16A";
+    case 5: return "05 - 1500 ohm - 13A";
+    case 6: return "06 - >1500 ohm - 6A (plug not connected)";
+    default: 
+      char buff[30];
+      sprintf(buff, "%02X - unknown value", state);
       return buff;
   }
 }
