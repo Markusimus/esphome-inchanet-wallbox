@@ -53,6 +53,9 @@ void InchanetWallboxComponent::update() {
 
   write_array(USART_buffer_out, SMALL_PACKET_OUT_SIZE);
 
+  // delay
+  delay(10);
+
   // cteme dokud je co cist
   bool byl_5x = false;
   while (available() && buffer_index < sizeof(buffer)) {
