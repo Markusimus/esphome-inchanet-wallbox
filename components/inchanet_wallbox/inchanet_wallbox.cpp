@@ -4,6 +4,7 @@
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/log.h"
 #include "inchanet_wallbox.h"
+#include <cstring>
 
 namespace esphome {
 namespace inchanet_wallbox {
@@ -281,7 +282,9 @@ std::string InchanetWallboxComponent::decode_warnings(uint8_t state) {
   // zakodujeme stav
   char buff[3];
   sprintf(buff, "%02X", state);
-  std:string result = buff;
+  std:string result;
+  
+   = buff;
   // doplnime textove vysvetlivky
   if (0x00 != (state & 0x01))
     result = result + ", 0x01 - relay B (phase 2 and/or 3) could not close";
