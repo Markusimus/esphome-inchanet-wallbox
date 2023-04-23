@@ -315,7 +315,7 @@ std::string InchanetWallboxComponent::decode_warnings(uint8_t state) {
     sprintf(&buff[pos], ", 0x80 - receiving data from another communication channel");
     pos = strlen (buff);
   }
-  return result;
+  return buff;
 }
 
 } // inchanet_wallbox
