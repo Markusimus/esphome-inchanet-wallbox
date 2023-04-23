@@ -80,9 +80,33 @@ void InchanetWallboxComponent::update() {
         char tmp_hex[3];
         float tmp_float = 0;
         // dekodujeme hodnoty
-        // state of electric vehicle - 0x00 - EV not connected, 0x01 - EV connected, 0x02 - EV wants to charge, 0x03 - EV needs to ventilate, 0x04 - error state
+        // state of electric vehicle:
+        // 0x00 - EV not connected
+        // 0x01 - EV connected
+        // 0x02 - EV wants to charge
+        // 0x03 - EV needs to ventilate
+        // 0x04 - error state
         sprintf(&tmp_hex[0], "%02X", buffer[9]);
-        this->state_of_electric_vehicle_sensor_->publish_state(tmp_hex);
+        string tmp_state = "Unknown";
+        switch(&tmp_hex[0]) {
+          case 0:
+            tmp_state = "EV not connected";
+            break;
+          case 1:
+            tmp_state = "EV connected";
+            break;
+          case 2:
+            tmp_state = "EV wants to charge";
+            break;
+          case 3:
+            tmp_state = "EV needs to ventilate";
+            break;
+          case 4:
+            tmp_state = "error state";
+            break;
+        }
+        this->state_of_electric_vehicle_sensor_->publish_state(
+          tmp_hex + " " + tmp_state);
         // state of charging - 0x00 - not charging, 0x01 - charging 1-phase, 0x02 - charging 3-phase
         sprintf(&tmp_hex[0], "%02X", buffer[9]);
         this->state_of_charging_sensor_->publish_state(tmp_hex);
