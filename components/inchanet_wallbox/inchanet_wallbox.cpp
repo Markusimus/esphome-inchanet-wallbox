@@ -4,6 +4,8 @@
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/log.h"
 #include "inchanet_wallbox.h"
+#include <string>
+#include <format>
 
 namespace esphome {
 namespace inchanet_wallbox {
@@ -79,34 +81,30 @@ void InchanetWallboxComponent::update() {
         // CRC OK
         char tmp_hex[3];
         float tmp_float = 0;
-        // dekodujeme hodnoty
-        // state of electric vehicle:
-        // 0x00 - EV not connected
-        // 0x01 - EV connected
-        // 0x02 - EV wants to charge
-        // 0x03 - EV needs to ventilate
-        // 0x04 - error state
-        sprintf(&tmp_hex[0], "%02X", buffer[9]);
-        string tmp_state = "Unknown";
-        switch(&tmp_hex[0]) {
+        string tmp_state;
+
+        // state of electric vehicle - dekodujeme hodnoty 
+        switch(buffer[9]) {
           case 0:
-            tmp_state = "EV not connected";
+            tmp_state = "0x00 - EV not connected";
             break;
           case 1:
-            tmp_state = "EV connected";
+            tmp_state = "0x01 - EV connected";
             break;
           case 2:
-            tmp_state = "EV wants to charge";
+            tmp_state = "0x02 - EV wants to charge";
             break;
           case 3:
-            tmp_state = "EV needs to ventilate";
+            tmp_state = "0x03 - EV needs to ventilate";
             break;
           case 4:
-            tmp_state = "error state";
+            tmp_state = "0x04 - error state";
+            break;
+          default:
+            tmp_state = std::format("%02X - Unknown", buffer[9]);
             break;
         }
-        this->state_of_electric_vehicle_sensor_->publish_state(
-          tmp_hex + " " + tmp_state);
+        this->state_of_electric_vehicle_sensor_->publish_state(tmp_state);
         // state of charging - 0x00 - not charging, 0x01 - charging 1-phase, 0x02 - charging 3-phase
         sprintf(&tmp_hex[0], "%02X", buffer[9]);
         this->state_of_charging_sensor_->publish_state(tmp_hex);
