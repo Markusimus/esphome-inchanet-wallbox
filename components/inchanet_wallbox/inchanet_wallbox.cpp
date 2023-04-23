@@ -79,7 +79,6 @@ void InchanetWallboxComponent::update() {
 
       if(received_crc32 == computed_crc32){
         // CRC OK
-        char tmp_hex[3];
 
         // state of electric vehicle
         this->state_of_electric_vehicle_sensor_->publish_state(
@@ -89,22 +88,13 @@ void InchanetWallboxComponent::update() {
         this->state_of_charging_sensor_->publish_state(
           this->decode_state_of_charging(buffer[9])
         );
-        // warnings - HEX
+        // warnings
         this->warnings_sensor_->publish_state(
           this->decode_warnings(buffer[10]));
 
-        // serious errors - HEX
-        // 0x00 - no errors
-        // 0x01 - relay stuck closed
-        // 0x02 - relay could not close
-        // 0x04 - error on RCD
-        // 0x08 - error on PE/N wires
-        // 0x10 - overvoltage
-        // 0x20 - overcurrent
-        // 0x40 - temperature too high (80°+)
-        // 0x80 - unsupported charging mode (i.e. ventilation needed or error on PWM voltage or input phase shorted)
-        sprintf(&tmp_hex[0], "%02X", buffer[11]);
-        this->serious_errors_sensor_->publish_state(tmp_hex);
+        // serious errors
+        this->serious_errors_sensor_->publish_state(
+          this->decode_warnings(buffer[11]));
 
         // measured voltage
         this->voltage_l1_sensor_->publish_state(0.25 * ((buffer[13] << 8) | buffer[12]));
@@ -316,7 +306,51 @@ std::string InchanetWallboxComponent::decode_warnings(uint8_t state) {
     pos = strlen (buff);
   }
   if (pos > 3) {
-    buff[4] = '=';
+    buff[3] = '=';
+  }
+  return buff;
+}
+
+std::string InchanetWallboxComponent::decode_errors(uint8_t state) {
+  // zakodujeme stav
+  char buff[1000];
+  sprintf(buff, "%02X ", state);
+  size_t pos = strlen (buff);
+  // doplnime textove vysvetlivky
+  if (0x00 != (state & 0x01)) {
+    sprintf(&buff[pos], ", relay stuck closed");
+    pos = strlen (buff);
+  }
+  if (0x00 != (state & 0x02)) {
+    sprintf(&buff[pos], ", relay could not close");
+    pos = strlen (buff);
+  }
+  if (0x00 != (state & 0x04)) {
+    sprintf(&buff[pos], ", error on RCD");
+    pos = strlen (buff);
+  }
+  if (0x00 != (state & 0x08)) {
+    sprintf(&buff[pos], ", error on PE/N wires");
+    pos = strlen (buff);
+  }
+  if (0x00 != (state & 0x10)) {
+    sprintf(&buff[pos], ", overvoltage");
+    pos = strlen (buff);
+  }
+  if (0x00 != (state & 0x20)) {
+    sprintf(&buff[pos], ", overcurrent");
+    pos = strlen (buff);
+  }
+  if (0x00 != (state & 0x40)) {
+    sprintf(&buff[pos], ", temperature too high (80°+)");
+    pos = strlen (buff);
+  }
+  if (0x00 != (state & 0x80)) {
+    sprintf(&buff[pos], ", unsupported charging mode (i.e. ventilation needed or error on PWM voltage or input phase shorted)");
+    pos = strlen (buff);
+  }
+  if (pos > 3) {
+    buff[3] = '=';
   }
   return buff;
 }
