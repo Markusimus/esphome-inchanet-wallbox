@@ -104,8 +104,8 @@ class InchanetWallboxComponent : public uart::UARTDevice, public PollingComponen
     uint32_t evse_id_ = 0;
 
     bool enabled_3_phase_ = true;
-    ChargingCurrentOption max_charging_current_ = CHARGING_CURRENT_16A;
-    ChargingCurrentOption default_charging_current_ = CHARGING_CURRENT_16A;
+    ChargingCurrentOption max_charging_current_ = CHARGING_CURRENT_6A;
+    ChargingCurrentOption default_charging_current_ = CHARGING_CURRENT_6A;
 
     unsigned int Calc_CRC32_sw(unsigned char* data, unsigned int length);
     void create_packet(uint8_t *packet_array, uint32_t ID, uint8_t charging_type, uint8_t max_Amps, uint8_t third_rele, uint8_t default_Amps);
