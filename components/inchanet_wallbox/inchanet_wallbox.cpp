@@ -25,35 +25,9 @@ void InchanetWallboxComponent::update() {
   // vycistime buffer
   for (int i = 0; i < sizeof(buffer); i++) {buffer[i] = 0;}
 
-  // odesleme zpravu
-  uint8_t USART_buffer_out[SMALL_PACKET_OUT_SIZE];
-
-  uint8_t max_Amps;
-  uint8_t third_rele;
-  uint8_t charging_type;
-  uint8_t default_Amps;
-
-  if (this->enabled_3_phase_) {
-    // 3-phase
-    charging_type = 3;
-    max_Amps = static_cast<uint8_t>(this->max_charging_current_);
-    third_rele = 0;
-    default_Amps = static_cast<uint8_t>(this->default_charging_current_);
-  }
-  else {
-    // 1-phase
-    charging_type = 2;
-    max_Amps = static_cast<uint8_t>(this->max_charging_current_);
-    third_rele = 0;
-    default_Amps = static_cast<uint8_t>(this->default_charging_current_) | 0x80;
-  }
-
-  create_packet(USART_buffer_out, this->evse_id_, charging_type, max_Amps, third_rele, default_Amps);
-
-  write_array(USART_buffer_out, SMALL_PACKET_OUT_SIZE);
-
+  
   // delay
-  delay(10);
+  // delay(10);
 
   // cteme dokud je co cist
   bool byl_5x = false;
@@ -155,6 +129,33 @@ void InchanetWallboxComponent::update() {
   else {
       ESP_LOGW(TAG, "Too short packet");
   }
+
+  // odesleme zpravu
+  uint8_t USART_buffer_out[SMALL_PACKET_OUT_SIZE];
+
+  uint8_t max_Amps;
+  uint8_t third_rele;
+  uint8_t charging_type;
+  uint8_t default_Amps;
+
+  if (this->enabled_3_phase_) {
+    // 3-phase
+    charging_type = 3;
+    max_Amps = static_cast<uint8_t>(this->max_charging_current_);
+    third_rele = 0;
+    default_Amps = static_cast<uint8_t>(this->default_charging_current_);
+  }
+  else {
+    // 1-phase
+    charging_type = 2;
+    max_Amps = static_cast<uint8_t>(this->max_charging_current_);
+    third_rele = 0;
+    default_Amps = static_cast<uint8_t>(this->default_charging_current_) | 0x80;
+  }
+
+  create_packet(USART_buffer_out, this->evse_id_, charging_type, max_Amps, third_rele, default_Amps);
+
+  write_array(USART_buffer_out, SMALL_PACKET_OUT_SIZE);
 }
 
 void InchanetWallboxComponent::dump_config() {
