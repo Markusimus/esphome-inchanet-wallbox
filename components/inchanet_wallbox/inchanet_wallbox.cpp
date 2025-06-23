@@ -5,147 +5,62 @@
 #include "esphome/core/log.h"
 #include "inchanet_wallbox.h"
 #include <cstring>
+#include <string>
 
 namespace esphome {
 namespace inchanet_wallbox {
 
 static const char *TAG = "inchanet_wallbox";
 
+static const uint8_t START_BYTE_1 = 0x54;
+static const uint8_t START_BYTE_2 = 0xDC;
 static const uint8_t USART_BUFFER_IN_SIZE_LONG = 64;
 static const uint8_t SMALL_PACKET_OUT_SIZE = 16;
 
 void InchanetWallboxComponent::setup() {
   // nothing to do here
+  if (this->flow_control_pin_ != nullptr) {
+    this->flow_control_pin_->setup();
+  }
+
+  vendorIdReacived = false;
 }
 
-void InchanetWallboxComponent::update() {
-  uint8_t buffer[100];
-  uint8_t buffer_index = 0;
-
-  // vycistime buffer
-  for (int i = 0; i < sizeof(buffer); i++) {buffer[i] = 0;}
-
-  
-  // delay
-  // delay(10);
-
-  // cteme dokud je co cist
-  bool byl_5x = false;
-  while (available() && buffer_index < sizeof(buffer)) {
-    uint8_t data;
-    read_byte(&data);
-    if (0x54 == data) {byl_5x = true;}
-    if (true == byl_5x) {
-      buffer[buffer_index++] = data;
-    }
+void InchanetWallboxComponent::update() 
+{
+  if (!vendorIdReacived)
+  {
+    VendorResponsePacket responsePacket;
+    vendorIdReacived = send_vendor_request_packet(0xFFFF, responsePacket);
+    
+  } else
+  {
+    read_control_packet();
+    send_command_packet();
   }
 
-  if (buffer_index > USART_BUFFER_IN_SIZE_LONG - 1) {
-    // kontrola havicky
-    if (buffer[0] == 0x54 &&
-        buffer[1] == 0xDC &&
-        buffer[2] == uint8_t(USART_BUFFER_IN_SIZE_LONG) &&
-        buffer[3] == uint8_t(USART_BUFFER_IN_SIZE_LONG >> 8)) {
+}
 
-      // check CRC
-      uint32_t computed_crc32 =   Calc_CRC32_sw(buffer, (USART_BUFFER_IN_SIZE_LONG >> 2)-1);
-      uint32_t received_crc32 =   *(uint32_t*)(buffer + USART_BUFFER_IN_SIZE_LONG -4);
-
-      if(received_crc32 == computed_crc32){
-        // CRC OK
-
-        // state of electric vehicle
-        this->state_of_electric_vehicle_sensor_->publish_state(
-          this->decode_state_of_ev (buffer[8]));
-        
-        // state of charging
-        this->state_of_charging_sensor_->publish_state(
-          this->decode_state_of_charging(buffer[9])
-        );
-        // warnings
-        this->warnings_sensor_->publish_state(
-          this->decode_warnings(buffer[10]));
-
-        // serious errors
-        this->serious_errors_sensor_->publish_state(
-          this->decode_warnings(buffer[11]));
-
-        // measured voltage
-        this->voltage_l1_sensor_->publish_state(0.25 * ((buffer[13] << 8) | buffer[12]));
-        this->voltage_l2_sensor_->publish_state(0.25 * ((buffer[15] << 8) | buffer[14]));
-        this->voltage_l3_sensor_->publish_state(0.25 * ((buffer[17] << 8) | buffer[16]));
-
-        // measured current
-        this->current_l1_sensor_->publish_state(0.1 * (int16_t)((buffer[19] << 8) | buffer[18]));
-        this->current_l2_sensor_->publish_state(0.1 * (int16_t)((buffer[21] << 8) | buffer[20]));
-        this->current_l3_sensor_->publish_state(0.1 * (int16_t)((buffer[23] << 8) | buffer[22]));
-
-        // Wh in this session
-        this->wh_in_this_session_sensor_->publish_state ((buffer[27] << 8) | (buffer[26] << 16) | (buffer[25] << 8) | buffer[24]);
-
-        // All time Wh charged
-        this->wh_all_time_sensor_->publish_state ((buffer[31] << 8) | (buffer[30] << 16) | (buffer[29] << 8) | buffer[28]);
-
-        // socket's lock state 
-        this->state_of_sockets_lock_sensor_->publish_state(
-          this->decode_state_of_lock(buffer[32]));
-
-        // EVSE temperature
-        this->evse_temperature_sensor_->publish_state((int8_t)buffer[33]);
-
-        // measured PP resistance
-        this->measured_pp_resistance_sensor_->publish_state(
-          this->decode_state_of_PP(buffer[36]));
-
-        // power factor L1 L2 L3
-        this->power_factor_l1_sensor_->publish_state(0.01 * (int8_t)buffer[37]);
-        this->power_factor_l2_sensor_->publish_state(0.01 * (int8_t)buffer[38]);
-        this->power_factor_l3_sensor_->publish_state(0.01 * (int8_t)buffer[39]);
-
-        // frequency L1 L2 L3
-        this->frequency_l1_sensor_->publish_state(0.1 * (int16_t)((buffer[41] << 8) | buffer[40]));
-        this->frequency_l2_sensor_->publish_state(0.1 * (int16_t)((buffer[43] << 8) | buffer[42]));
-        this->frequency_l3_sensor_->publish_state(0.1 * (int16_t)((buffer[45] << 8) | buffer[44]));
-
-        // external current L1 L2 L3
-        this->external_current_l1_sensor_->publish_state(0.1 * (int16_t)((buffer[52] << 8) | buffer[51]));
-        this->external_current_l2_sensor_->publish_state(0.1 * (int16_t)((buffer[54] << 8) | buffer[53]));
-        this->external_current_l3_sensor_->publish_state(0.1 * (int16_t)((buffer[56] << 8) | buffer[55]));
-
-        // publikujeme prijata data jako HEX
-        char hex_string[sizeof(buffer) * 3 + 1];
-        for (int i = 0; i < sizeof(hex_string); i++) {hex_string[i] = 0x00;}
-        for (int i = 0; i < USART_BUFFER_IN_SIZE_LONG; i++) {sprintf(&hex_string[i * 3], "%02X ", buffer[i]);}
-        this->state_sensor_->publish_state(hex_string);
-      }
-      else {
-        ESP_LOGW(TAG, "CRC NOK");
-      }
-    }
-    else {
-      ESP_LOGW(TAG, "Invalid packet header");
-    }
-  }
-  else {
-      ESP_LOGW(TAG, "Too short packet");
-  }
-
-  // odesleme zpravu
-  uint8_t USART_buffer_out[SMALL_PACKET_OUT_SIZE];
+void InchanetWallboxComponent::send_command_packet()
+{
+  // Transmit Buffer
+  EvseCommandPacket command_packet;
 
   uint8_t max_Amps;
   uint8_t third_rele;
   uint8_t charging_type;
   uint8_t default_Amps;
 
-  if (this->enabled_3_phase_) {
+  if (this->enabled_3_phase_)
+  {
     // 3-phase
     charging_type = 3;
     max_Amps = static_cast<uint8_t>(this->max_charging_current_);
     third_rele = 0;
     default_Amps = static_cast<uint8_t>(this->default_charging_current_);
   }
-  else {
+  else
+  {
     // 1-phase
     charging_type = 2;
     max_Amps = static_cast<uint8_t>(this->max_charging_current_);
@@ -153,13 +68,154 @@ void InchanetWallboxComponent::update() {
     default_Amps = static_cast<uint8_t>(this->default_charging_current_) | 0x80;
   }
 
-  create_packet(USART_buffer_out, this->evse_id_, charging_type, max_Amps, third_rele, default_Amps);
+  // TODO: Do not change type or rele
+  charging_type = 0;
+  third_rele = 0;
 
-  write_array(USART_buffer_out, SMALL_PACKET_OUT_SIZE);
+  // Create packet
+  command_packet.fields.start_byte = 0xDD54;
+  command_packet.fields.length = SMALL_PACKET_OUT_SIZE;
+  command_packet.fields.evse_id = this->evse_id_;
+  command_packet.fields.charging_type = charging_type;
+  command_packet.fields.max_amps = max_Amps;
+  command_packet.fields.third_rele = third_rele;
+  command_packet.fields.default_amps = default_Amps;
+  command_packet.fields.crc32 = Calc_CRC32_sw(command_packet.raw, (SMALL_PACKET_OUT_SIZE - 4) >> 2);
+
+
+  if (this->flow_control_pin_ != nullptr)
+    this->flow_control_pin_->digital_write(true);
+
+  this->write_array(command_packet.raw, SMALL_PACKET_OUT_SIZE);
+  this->flush();
+
+  if (this->flow_control_pin_ != nullptr)
+    this->flow_control_pin_->digital_write(false);
+
+  log_packet(command_packet.raw, SMALL_PACKET_OUT_SIZE );
+
+  // write_array(command_packet.raw, SMALL_PACKET_OUT_SIZE);
+}
+
+void InchanetWallboxComponent::log_packet(const uint8_t *data, size_t size) {
+  if (data == nullptr || size == 0) {
+    return;
+  }
+
+  std::string hex_string;
+  // Pre-allocate string to avoid reallocations. Each byte is 3 chars ("XX ").
+  hex_string.reserve(size * 3);
+
+  for (size_t i = 0; i < size; ++i) {
+    char buffer[4];
+    // Use snprintf for safety, it writes a null terminator.
+    snprintf(buffer, sizeof(buffer), "%02X ", data[i]);
+    hex_string.append(buffer);
+  }
+
+  if (!hex_string.empty()) {
+    // Remove trailing space for cleaner output
+    hex_string.pop_back();
+  }
+
+  // Log the resulting string. ESP_LOGD is a macro that calls a printf-like function.
+  // Passing the string as an argument is safer than passing it as the format string.
+  ESP_LOGD(TAG, "%s", hex_string.c_str());
+}
+
+void InchanetWallboxComponent::read_control_packet()
+{
+  uint8_t byte;
+  while (available())
+  {
+    read_byte(&byte);
+    ESP_LOGD(TAG, "%x", byte);
+    switch (this->packet_finder_state_)
+    {
+    case WAITING_FOR_START_BYTE_1:
+      if (byte == START_BYTE_1)
+      {
+        this->packet_finder_state_ = WAITING_FOR_START_BYTE_2;
+      }
+      break;
+    case WAITING_FOR_START_BYTE_2:
+      if (byte == START_BYTE_2)
+      {
+        this->packet_finder_state_ = READING_PACKET;
+        this->evse_packet_.raw[0] = START_BYTE_1;
+        this->evse_packet_.raw[1] = START_BYTE_2;
+        this->bytes_read_ = 2;
+      }
+      else
+      {
+        this->packet_finder_state_ = WAITING_FOR_START_BYTE_1;
+      }
+      break;
+    case READING_PACKET:
+      this->evse_packet_.raw[this->bytes_read_] = byte;
+      this->bytes_read_++;
+
+      if (this->bytes_read_ == USART_BUFFER_IN_SIZE_LONG)
+      {
+        this->packet_finder_state_ = WAITING_FOR_START_BYTE_1;
+
+        if (this->evse_packet_.fields.length == USART_BUFFER_IN_SIZE_LONG)
+        {
+          uint32_t computed_crc32 = Calc_CRC32_sw(this->evse_packet_.raw, (USART_BUFFER_IN_SIZE_LONG / 4) - 1);
+
+          if (this->evse_packet_.fields.crc32 == computed_crc32)
+          {
+            // CRC OK
+            this->state_of_electric_vehicle_sensor_->publish_state(this->decode_state_of_ev(this->evse_packet_.fields.state_of_ev));
+            this->state_of_charging_sensor_->publish_state(this->decode_state_of_charging(this->evse_packet_.fields.state_of_charging));
+            this->warnings_sensor_->publish_state(this->decode_warnings(this->evse_packet_.fields.warnings));
+            this->serious_errors_sensor_->publish_state(this->decode_errors(this->evse_packet_.fields.errors));
+            this->voltage_l1_sensor_->publish_state(this->evse_packet_.fields.voltage_l1 * 0.25f);
+            this->voltage_l2_sensor_->publish_state(this->evse_packet_.fields.voltage_l2 * 0.25f);
+            this->voltage_l3_sensor_->publish_state(this->evse_packet_.fields.voltage_l3 * 0.25f);
+            this->current_l1_sensor_->publish_state(this->evse_packet_.fields.current_l1 * 0.1f);
+            this->current_l2_sensor_->publish_state(this->evse_packet_.fields.current_l2 * 0.1f);
+            this->current_l3_sensor_->publish_state(this->evse_packet_.fields.current_l3 * 0.1f);
+            this->wh_in_this_session_sensor_->publish_state(this->evse_packet_.fields.wh_session);
+            this->wh_all_time_sensor_->publish_state(this->evse_packet_.fields.wh_total);
+            this->state_of_sockets_lock_sensor_->publish_state(this->decode_state_of_lock(this->evse_packet_.fields.state_of_lock));
+            this->evse_temperature_sensor_->publish_state(this->evse_packet_.fields.temperature);
+            this->measured_pp_resistance_sensor_->publish_state(this->decode_state_of_PP(this->evse_packet_.fields.state_of_pp_res));
+            this->power_factor_l1_sensor_->publish_state(this->evse_packet_.fields.pf_l1 * 0.01f);
+            this->power_factor_l2_sensor_->publish_state(this->evse_packet_.fields.pf_l2 * 0.01f);
+            this->power_factor_l3_sensor_->publish_state(this->evse_packet_.fields.pf_l3 * 0.01f);
+            this->frequency_l1_sensor_->publish_state(this->evse_packet_.fields.freq_l1 * 0.1f);
+            this->frequency_l2_sensor_->publish_state(this->evse_packet_.fields.freq_l2 * 0.1f);
+            this->frequency_l3_sensor_->publish_state(this->evse_packet_.fields.freq_l3 * 0.1f);
+            this->external_current_l1_sensor_->publish_state(this->evse_packet_.fields.ext_curr_l1 * 0.1f);
+            this->external_current_l2_sensor_->publish_state(this->evse_packet_.fields.ext_curr_l2 * 0.1f);
+            this->external_current_l3_sensor_->publish_state(this->evse_packet_.fields.ext_curr_l3 * 0.1f);
+
+            // char hex_string[sizeof(this->evse_packet_.raw) * 3 + 1];
+            // for (int i = 0; i < sizeof(this->evse_packet_.raw); i++)
+            // {
+            //   sprintf(&hex_string[i * 3], "%02X ", this->evse_packet_.raw[i]);
+            // }
+            // this->state_sensor_->publish_state(hex_string);
+          }
+          else
+          {
+            ESP_LOGW(TAG, "CRC NOK");
+          }
+        }
+        else
+        {
+          ESP_LOGW(TAG, "Invalid packet header");
+        }
+      }
+      break;
+    }
+  }
 }
 
 void InchanetWallboxComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "Inchanet Wallbox Component");
+  LOG_PIN("  Flow Control Pin: ", this->flow_control_pin_);
 }
 
 /**
@@ -186,29 +242,6 @@ unsigned int InchanetWallboxComponent::Calc_CRC32_sw(unsigned char* data, unsign
   }
 
   return crc;
-}
-
-void InchanetWallboxComponent::create_packet(uint8_t *packet_array, uint32_t ID, uint8_t charging_type, uint8_t max_Amps, uint8_t third_rele, uint8_t default_Amps){
-  packet_array[0] = 0x54;
-  packet_array[1] = 0xDD;
-  packet_array[2] = SMALL_PACKET_OUT_SIZE;
-  packet_array[3] = 0;
-  packet_array[4] = ID;
-  packet_array[5] = (ID >> 8);
-  packet_array[6] = (ID >> 16);
-  packet_array[7] = (ID >> 24);
-
-  packet_array[8] = charging_type;
-  packet_array[9] = max_Amps;
-  packet_array[10] = third_rele;
-  packet_array[11] = default_Amps;
-  
-  uint32_t crc = Calc_CRC32_sw(packet_array, (SMALL_PACKET_OUT_SIZE - 4) >> 2);
-  
-  packet_array[SMALL_PACKET_OUT_SIZE -4] = uint8_t(crc);
-  packet_array[SMALL_PACKET_OUT_SIZE -3] = uint8_t(crc >> 8);
-  packet_array[SMALL_PACKET_OUT_SIZE -2] = uint8_t(crc >> 16);
-  packet_array[SMALL_PACKET_OUT_SIZE -1] = uint8_t(crc >> 24);
 }
 
 std::string InchanetWallboxComponent::decode_state_of_ev(uint8_t state) {
@@ -354,6 +387,51 @@ std::string InchanetWallboxComponent::decode_errors(uint8_t state) {
     buff[3] = '=';
   }
   return buff;
+}
+
+bool InchanetWallboxComponent::send_vendor_request_packet(uint16_t request_type, VendorResponsePacket &response) {
+    VendorRequestPacket request_packet;
+    request_packet.fields.start_byte = 0xCC44;
+    request_packet.fields.length = sizeof(VendorRequestPacket);
+    request_packet.fields.evse_id = this->evse_id_;
+    request_packet.fields.request_type = request_type;
+    request_packet.fields.spare = 0;
+    request_packet.fields.crc32 = Calc_CRC32_sw(request_packet.raw, (sizeof(VendorRequestPacket) - 4) >> 2);
+
+    if (this->flow_control_pin_ != nullptr)
+        this->flow_control_pin_->digital_write(true);
+
+    this->write_array(request_packet.raw, sizeof(VendorRequestPacket));
+    this->flush();
+
+    if (this->flow_control_pin_ != nullptr)
+        this->flow_control_pin_->digital_write(false);
+
+    log_packet(request_packet.raw, sizeof(VendorRequestPacket));
+
+    uint8_t buffer[sizeof(VendorResponsePacket)];
+    size_t bytes_read = 0;
+    uint32_t start_time = millis();
+
+    while (bytes_read < sizeof(VendorResponsePacket) && (millis() - start_time) < 1000) {
+        if (available()) {
+            read_byte(&buffer[bytes_read]);
+            bytes_read++;
+        }
+    }
+
+    if (bytes_read > 0)
+      log_packet(buffer, sizeof(VendorResponsePacket));
+
+    if (bytes_read == sizeof(VendorResponsePacket)) {
+        memcpy(response.raw, buffer, sizeof(VendorResponsePacket));
+        uint32_t computed_crc32 = Calc_CRC32_sw(response.raw, (sizeof(VendorResponsePacket) - 4) >> 2);
+        if (response.fields.start_byte == 0xCC44 && response.fields.crc32 == computed_crc32) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 } // inchanet_wallbox
